@@ -1,0 +1,263 @@
+#!/usr/bin/env python3
+"""
+WSID seeder (format-preserving):
+- Opens WSID with openpyxl to preserve merged headers, styles, and all other sheets.
+- Treats WSID 'Resource Details' header row as row 2 (row 1 has merged section labels).
+- Fills blank cells for Business Name, Business Definition, Possible Values, Processing Guidelines
+  using a canonicalized Glossary keyed by API Element.
+- Writes to a new file; original WSID remains untouched.
+"""
+
+from pathlib import Path
+import sys
+import re
+import pandas as pd
+from openpyxl import load_workbook
+
+# =========================
+# CONFIG — EDIT IF YOU WANT
+# =========================
+CONFIG = {
+    "WSID_PATH": "",         # e.g., r"C:\...\Tax Form Timing WSID.xlsx"
+    "WSID_DETAILS_SHEET": "Resource Details",  # sheet to update (exact name if you know it)
+    "WSID_HEADER_ROW": 2,    # row index where the real column headers live (row 1 is merged sections)
+    "GLOSSARY_PATH": "",     # e.g., r"C:\...\WSIDGlossary.xlsx"
+    "GLOSSARY_SHEET": "",    # leave blank to auto-detect sheet with 'API Element' column
+    "OUT_PATH": "",          # auto next to WSID if blank
+    "REPORT_PATH": "",       # auto next to WSID if blank
+}
+USE_FILE_PICKERS = True  # if paths blank, show pickers on Windows/desktop
+
+# Header aliases to canonical names
+HEADER_ALIASES = {
+    "api element": "API Element",
+    "wsapi element": "API Element",
+    "element": "API Element",
+    "business name": "Business Name",
+    "business description": "Business Definition",
+    "business definition": "Business Definition",
+    "definition": "Business Definition",
+    "possible values": "Possible Values",
+    "processing guidelines": "Processing Guidelines",
+    "source": "Source",
+}
+
+TARGET_FIELDS = ["Business Name", "Business Definition", "Possible Values", "Processing Guidelines"]
+
+def norm_key(s):
+    if pd.isna(s) or s is None:
+        return ""
+    return " ".join(str(s).strip().lower().split())
+
+def colname_to_canon(name: str) -> str:
+    k = " ".join(str(name).strip().lower().split())
+    return HEADER_ALIASES.get(k, str(name).strip())
+
+def pick_files_if_needed(cfg: dict) -> dict:
+    if not USE_FILE_PICKERS:
+        return cfg
+    missing_inputs = not cfg.get("WSID_PATH") or not cfg.get("GLOSSARY_PATH")
+    if not missing_inputs:
+        return cfg
+    try:
+        import tkinter as tk
+        from tkinter import filedialog
+        root = tk.Tk(); root.withdraw()
+        if not cfg.get("WSID_PATH"):
+            wsid = filedialog.askopenfilename(title="Select WSID Excel", filetypes=[("Excel", "*.xlsx;*.xls")])
+            if wsid: cfg["WSID_PATH"] = wsid
+        if not cfg.get("GLOSSARY_PATH"):
+            gloss = filedialog.askopenfilename(title="Select Glossary Excel", filetypes=[("Excel", "*.xlsx;*.xls")])
+            if gloss: cfg["GLOSSARY_PATH"] = gloss
+    except Exception as e:
+        print(f"[WARN] File picker unavailable: {e}")
+    return cfg
+
+def autodetect_glossary_sheet(path: Path, preferred: str = "") -> str:
+    xls = pd.ExcelFile(path)
+    if preferred and preferred in xls.sheet_names:
+        return preferred
+    # Prefer sheet that has an API Element column (after alias mapping)
+    for sheet in xls.sheet_names:
+        df = pd.read_excel(xls, sheet_name=sheet, nrows=2, dtype=str)
+        canon = [colname_to_canon(c) for c in df.columns]
+        if "API Element" in canon:
+            return sheet
+    # fallback to first sheet
+    return xls.sheet_names[0]
+
+def load_glossary(path: Path, sheet_name: str) -> dict:
+    df = pd.read_excel(path, sheet_name=sheet_name, dtype=str)
+    # Normalize headers
+    df.columns = [colname_to_canon(c) for c in df.columns]
+    # Ensure minimal columns exist
+    for c in ["API Element"] + TARGET_FIELDS + ["Source"]:
+        if c not in df.columns:
+            df[c] = pd.NA
+    # Build canonical row per API Element (prefer most complete)
+    def completeness(row):
+        return sum(0 if pd.isna(row.get(f)) or str(row.get(f)).strip()=="" else 1 for f in TARGET_FIELDS)
+    best_by_ae = {}
+    best_score = {}
+    for _, row in df.iterrows():
+        ae = norm_key(row.get("API Element"))
+        if not ae:
+            continue
+        score = completeness(row)
+        if (ae not in best_by_ae) or (score > best_score.get(ae, -1)):
+            best_by_ae[ae] = row
+            best_score[ae] = score
+    return best_by_ae
+
+def read_header_map(ws, header_row: int) -> dict:
+    """Return dict canonical_name -> column_index (1-based) by reading header_row cells."""
+    header_map = {}
+    for col_idx in range(1, ws.max_column + 1):
+        v = ws.cell(row=header_row, column=col_idx).value
+        if v is None:
+            continue
+        canon = colname_to_canon(v)
+        header_map[canon] = col_idx
+    return header_map
+
+def main():
+    cfg = pick_files_if_needed(CONFIG.copy())
+
+    wsid_path = cfg.get("WSID_PATH", "").strip()
+    glossary_path = cfg.get("GLOSSARY_PATH", "").strip()
+    if not wsid_path or not glossary_path:
+        print("ERROR: Set WSID_PATH and GLOSSARY_PATH in CONFIG or via the file picker.")
+        sys.exit(1)
+
+    wsid_path = Path(wsid_path)
+    glossary_path = Path(glossary_path)
+    out_path = Path(cfg["OUT_PATH"]) if cfg.get("OUT_PATH") else wsid_path.with_name(wsid_path.stem + " (seeded).xlsx")
+    report_path = Path(cfg["REPORT_PATH"]) if cfg.get("REPORT_PATH") else wsid_path.with_name(wsid_path.stem + " (seed report).csv")
+
+    # Load Glossary (auto-detect sheet)
+    gloss_sheet = cfg.get("GLOSSARY_SHEET", "")
+    gloss_sheet = autodetect_glossary_sheet(glossary_path, gloss_sheet)
+    canon_by_ae = load_glossary(glossary_path, gloss_sheet)
+
+    # Open WSID workbook (preserve formatting)
+    try:
+        wb = load_workbook(wsid_path)
+    except Exception as e:
+        print(f"ERROR: Opening WSID workbook: {e}")
+        sys.exit(1)
+
+    # Pick Resource Details sheet
+    wsid_sheet_name = cfg.get("WSID_DETAILS_SHEET") or "Resource Details"
+    if wsid_sheet_name not in wb.sheetnames:
+        # fallback: pick a sheet with an 'API Element' header on the declared header row
+        candidates = []
+        for s in wb.sheetnames:
+            sh = wb[s]
+            header_map = read_header_map(sh, cfg.get("WSID_HEADER_ROW", 2))
+            if "API Element" in header_map or "Element" in header_map or "WSAPI Element" in header_map:
+                candidates.append(s)
+        if candidates:
+            wsid_sheet_name = candidates[0]
+        else:
+            print("ERROR: Could not find a sheet with an API Element header.")
+            sys.exit(1)
+
+    ws = wb[wsid_sheet_name]
+    header_row = int(cfg.get("WSID_HEADER_ROW", 2))
+
+    # Build header map from row 2 only (avoid row 1 merged titles)
+    header_map = read_header_map(ws, header_row)
+
+    # Resolve which column holds API Element in WSID
+    api_element_col = None
+    for alias in ["API Element", "WSAPI Element", "Element"]:
+        if alias in header_map:
+            api_element_col = header_map[alias]
+            break
+    if api_element_col is None:
+        print("ERROR: 'API Element' column not found on WSID header row.")
+        sys.exit(1)
+
+    # Resolve target field columns (if absent, we still allow writing by creating them at the end)
+    target_col_idx = {}
+    next_col = ws.max_column + 1
+    for field in TARGET_FIELDS:
+        if field in header_map:
+            target_col_idx[field] = header_map[field]
+        else:
+            # Create the column header (preserve structure: write header in row 2)
+            ws.cell(row=header_row, column=next_col).value = field
+            target_col_idx[field] = next_col
+            next_col += 1
+
+    # Iterate data rows (starting from header_row+1)
+    report_rows = []
+    max_row = ws.max_row
+    for r in range(header_row + 1, max_row + 1):
+        ae_val = ws.cell(row=r, column=api_element_col).value
+        ae_norm = norm_key(ae_val)
+        if not ae_norm:
+            # empty or section spacing row—skip but log if it had other data
+            report_rows.append({
+                "Row": r,
+                "API Element": ae_val,
+                "Business Name": ws.cell(row=r, column=target_col_idx["Business Name"]).value if "Business Name" in target_col_idx else "",
+                "Action": "No AE",
+                "Details": "Missing API Element"
+            })
+            continue
+
+        canon = canon_by_ae.get(ae_norm)
+        if canon is None:
+            report_rows.append({
+                "Row": r,
+                "API Element": ae_val,
+                "Business Name": ws.cell(row=r, column=target_col_idx["Business Name"]).value if "Business Name" in target_col_idx else "",
+                "Action": "No match",
+                "Details": "API Element not in glossary"
+            })
+            continue
+
+        updates = {}
+        for field in TARGET_FIELDS:
+            col = target_col_idx[field]
+            cur = ws.cell(row=r, column=col).value
+            if cur is None or str(cur).strip() == "":
+                g_val = canon.get(field)
+                if not (pd.isna(g_val) or str(g_val).strip() == ""):
+                    ws.cell(row=r, column=col).value = g_val
+                    updates[field] = True
+
+        if updates:
+            filled = ", ".join(sorted(updates.keys()))
+            details = f"Filled {filled}"
+            src = canon.get("Source", pd.NA)
+            if not (pd.isna(src) or str(src).strip() == ""):
+                details += f"; Source: {src}"
+            bn_display = ws.cell(row=r, column=target_col_idx["Business Name"]).value if "Business Name" in target_col_idx else ""
+            report_rows.append({
+                "Row": r, "API Element": ae_val, "Business Name": bn_display,
+                "Action": "Updated", "Details": details
+            })
+        else:
+            report_rows.append({
+                "Row": r, "API Element": ae_val,
+                "Business Name": ws.cell(row=r, column=target_col_idx["Business Name"]).value if "Business Name" in target_col_idx else "",
+                "Action": "Skipped", "Details": "Already populated"
+            })
+
+    # Save updated WSID as a new file (preserves styles/merges/other sheets)
+    try:
+        wb.save(out_path)
+    except Exception as e:
+        print(f"ERROR: writing updated WSID: {e}")
+        sys.exit(1)
+
+    # Save report
+    pd.DataFrame(report_rows).to_csv(report_path, index=False)
+
+    print(f"Done.\nUpdated WSID: {out_path}\nReport: {report_path}\n"
+          f"Sheet: {wsid_sheet_name}, Header row: {header_row}, Glossary sheet: {gloss_sheet}")
+
+if __name__ == "__main__":
+    main()
