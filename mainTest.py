@@ -99,6 +99,15 @@ class App:
     self.root.option_add('*selectBackground', '#164e63')
     self.root.option_add('*selectForeground', 'white')
 
+    # Keep radio buttons readable on hover/press/focus
+    # (unchecked stays black; checked stays a dark green)
+    for sty, base_bg in (('unchecked.TRadiobutton', 'black'),
+                         ('checked.TRadiobutton',  '#166534')):  # darker than 'green'
+        s.map(sty,
+              background=[('active', base_bg), ('pressed', base_bg), ('focus', base_bg)],
+              foreground=[('active', 'white'), ('!active', 'white')])
+   
+
 
     # ---------- Top choices (R1..R5) ----------
     def _build_header(self) -> None:
