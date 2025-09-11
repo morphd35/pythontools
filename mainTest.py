@@ -26,6 +26,112 @@ from Swagger2Csv import wsid_possible_values_yaml as wsidToPosibleValues
 from Swagger2Csv import create_possible_values_tab as createPVL
 
 
+# ----------------------------
+# MODULE-LEVEL CONFIGURATION
+# ----------------------------
+# -------------------------------------------------------------------
+# OPTIONS CONFIGURATION DICTIONARY
+# -------------------------------------------------------------------
+# This dictionary defines the behavior of each selectable option
+# in the UI (radio buttons R1-R5 currently).
+#
+# Key: string representing the radio button value ('1', '2', etc.)
+# Value: dictionary containing UI and logic settings for that option
+#
+# Fields inside each option dictionary:
+#   - 'yaml_btn': 'enable' or 'disable'
+#       Controls whether the YAML file selection button is active.
+#   - 'xls_btn': 'enable' or 'disable'
+#       Controls whether the XLS/XLSX file selection button is active.
+#   - 'checked_radio': string ('R1', 'R2', etc.)
+#       Indicates which radio button should appear checked when this
+#       option is selected.
+#   - 'show_inline': True/False
+#       Determines whether the "enable inline" button is displayed.
+#   - 'show_tree': True/False
+#       Determines whether the resource tree (tree view) is displayed.
+#   - 'reset_paths': list of strings, e.g., ['yaml_path', 'xlsx_path']
+#       Lists which file path variables should be reset/cleared when
+#       this option is selected.
+#
+# Usage/Modification Notes:
+#   - To add a new option:
+#       1. Add a new key-value pair here, following the same structure.
+#       2. Ensure a corresponding radio button variable exists (e.g., R6).
+#       3. Update switch() to handle the new radio button style changes.
+#       4. Update start_process() if the new option requires specific
+#          processing logic.
+#   - This setup centralizes UI behavior control in one dictionary,
+#     making it easier to maintain, read, and grow as new features
+#     or options are added.
+# -------------------------------------------------------------------
+
+
+options = {
+    '1': {
+        'yaml_btn': 'enable',
+        'xls_btn': 'disable',
+        'checked_radio': 'R1',
+        'show_inline': False,
+        'show_tree': True,
+        'reset_paths': ['xlsx_path']
+    },
+    '2': {
+        'yaml_btn': 'enable',
+        'xls_btn': 'enable',
+        'checked_radio': 'R2',
+        'show_inline': True,
+        'show_tree': False,
+        'reset_paths': []
+    },
+    '3': {
+        'yaml_btn': 'disable',
+        'xls_btn': 'enable',
+        'checked_radio': 'R3',
+        'show_inline': False,
+        'show_tree': False,
+        'reset_paths': ['xlsx_path', 'yaml_path']
+    },
+    '4': {
+        'yaml_btn': 'disable',
+        'xls_btn': 'enable',
+        'checked_radio': 'R4',
+        'show_inline': False,
+        'show_tree': False,
+        'reset_paths': ['yaml_path']
+    },
+    '5': {
+        'yaml_btn': 'disable',
+        'xls_btn': 'enable',
+        'checked_radio': 'R5',
+        'show_inline': False,
+        'show_tree': False,
+        'reset_paths': ['yaml_path']
+    }
+}
+
+# Global paths
+yaml_path = ''
+xlsx_path = ''
+choice = ''
+
+# -------------------------------------------------------------------
+# DYNAMIC RADIO BUTTON CREATION
+# -------------------------------------------------------------------
+radio_buttons = {}
+var = StringVar()
+var.set(next(iter(options.keys())))  # default selection
+
+for i, key in enumerate(options.keys(), start=1):
+    rb = ttk.Radiobutton(
+        root,
+        text=f"Option {key}",
+        variable=var,
+        value=key,
+        command=lambda k=key: switch(k)  # pass key to switch
+    )
+    rb.grid(row=i, column=0, sticky="W", pady=1)
+    radio_buttons[key] = rb
 
 class WsidCreationThreadedTask(threading.Thread):
     def __init__(self, queue, yaml_path, selected_resources):
@@ -205,79 +311,48 @@ def change_state_xls_btn_and_label(state):
         xls_btn["text"] = "Disabled"
         xls_btn['bg'] = '#424040'
 
-def switch():
-    global choice
-    choice = str(var.get())
-    if str(var.get()) == '1':
-        change_state_yaml_btn_and_label('enable')
-        change_state_xls_btn_and_label('disable')
-        R1["style"] = "checked.TRadiobutton"
-        R2["style"] = "unchecked.TRadiobutton"
-        R3["style"] = "unchecked.TRadiobutton"
-        R4["style"] = "unchecked.TRadiobutton"
-        R5["style"] = "unchecked.TRadiobutton"
-        clear_contents()
+# -------------------------------------------------------------------
+# SWITCH FUNCTION
+# -------------------------------------------------------------------
+def switch(selected_key):
+    global yaml_path, xlsx_path
+
+    choice = selected_key
+    opt = options[choice]
+
+    # Enable/disable buttons
+    change_state_yaml_btn_and_label(opt['yaml_btn'])
+    change_state_xls_btn_and_label(opt['xls_btn'])
+
+    # Reset paths if required
+    for path_var in opt.get('reset_paths', []):
+        if path_var == 'yaml_path':
+            yaml_path = ''
+        elif path_var == 'xlsx_path':
+            xlsx_path = ''
+
+    # Show/hide inline and tree
+    if opt['show_inline']:
+        enable_inline_btn.grid(row=2, column=0, sticky="W", pady=1)
+    else:
         enable_inline_btn.grid_remove()
-        xlsx_path = ''
-        xls_label["text"] = 'Choose Input Xlsx File:'
-    elif str(var.get()) == '2':
-        change_state_yaml_btn_and_label('enable')
-        change_state_xls_btn_and_label('enable')
-        R1["style"] = "unchecked.TRadiobutton"
-        R2["style"] = "checked.TRadiobutton"
-        R3["style"] = "unchecked.TRadiobutton"
-        R4["style"] = "unchecked.TRadiobutton"
-        R5["style"] = "unchecked.TRadiobutton"
+
+    if opt['show_tree']:
+        tree.grid()
+        v_tree_scroll.grid()
+        x_tree_scroll.grid()
+    else:
         tree.grid_remove()
         v_tree_scroll.grid_remove()
         x_tree_scroll.grid_remove()
-        enable_inline_btn.grid(row=2, column=0, sticky="W", pady=1)
-        clear_contents()
-    elif str(var.get()) == '3':
-        change_state_yaml_btn_and_label('disable')
-        change_state_xls_btn_and_label('enable')
-        R1["style"] = "unchecked.TRadiobutton"
-        R2["style"] = "unchecked.TRadiobutton"
-        R3["style"] = "checked.TRadiobutton"
-        R4["style"] = "unchecked.TRadiobutton"
-        R5["style"] = "unchecked.TRadiobutton"
-        clear_contents()
-        enable_inline_btn.grid_remove()
-        tree.grid_remove()
-        yaml_path = ''
-        xls_label["text"] = 'Choose Input Xlsx File:'
-    elif str(var.get()) == '4':
-        change_state_yaml_btn_and_label('disable')
-        change_state_xls_btn_and_label('enable')
-        R1["style"] = "unchecked.TRadiobutton"
-        R2["style"] = "unchecked.TRadiobutton"
-        R3["style"] = "unchecked.TRadiobutton"
-        R4["style"] = "checked.TRadiobutton"
-        R5["style"] = "unchecked.TRadiobutton"
-        clear_contents()
-        enable_inline_btn.grid_remove()
-        tree.grid_remove()
-        yaml_path = ''
-    elif str(var.get()) == '5':
-        change_state_yaml_btn_and_label('disable')
-        change_state_xls_btn_and_label('enable')
-        R1["style"] = "unchecked.TRadiobutton"
-        R2["style"] = "unchecked.TRadiobutton"
-        R3["style"] = "unchecked.TRadiobutton"
-        R4["style"] = "unchecked.TRadiobutton"
-        R5["style"] = "checked.TRadiobutton"
-        clear_contents()
-        enable_inline_btn.grid_remove()
-        tree.grid_remove()
-        yaml_path = ''    
 
+    # Update radio styles dynamically
+    for k, rb in radio_buttons.items():
+        rb["style"] = "checked.TRadiobutton" if k == choice else "unchecked.TRadiobutton"
+
+    # Reset labels
     xls_label["text"] = 'Choose Input Xlsx File:'
     yml_label["text"] = 'Choose Input Yaml File:'
-
-
-yaml_path = ''
-xlsx_path = ''
-
 
 def open_yaml_file():
     path = askopenfilename(filetypes=[("Yaml files", ".yaml .yml")])
@@ -358,13 +433,21 @@ def clear_contents():
 
 def start_process():
     if not validate_input():
-        return ''
+        return
 
-    if choice == '1':
-        try:
-            clear_contents()
+    opt = options[choice]  # get UI option config
+
+    try:
+        clear_contents()
+        out_text["foreground"] = 'white'
+        pb.grid(row=5, column=0, sticky=W, pady=2)
+        pb.start()
+        halt_ui()
+        root.update()
+
+        if choice == '1':
+            # WSID creation task
             selected_resources = {}
-
             if tree:
                 for checked_mapping in checkbox_resource_mapping.keys():
                     oper_list = []
@@ -372,130 +455,48 @@ def start_process():
                     for operation in checkbox_resource_mapping[checked_mapping].keys():
                         if operation in tree.get_checked():
                             oper_list.append(checkbox_resource_mapping[checked_mapping][operation])
-
-            out_text.insert(INSERT, 'Loading.....\nWSID Creation Started ' + notice)
-            out_text["foreground"] = 'white'
-
-            pb.grid(row=5, column=0, sticky=W, pady=2)
-            pb.start()
-            halt_ui()
-            root.update()
             t = WsidCreationThreadedTask(result_queue, yaml_path, selected_resources)
-            t.start()
-            root.after(100, process_queue)
-        # swag.start(yaml_path,selected_resources)
-        # color='green'
-        # if result.is_error:
-        # 	color='red'
-        # out_text.insert(INSERT, result.result_string+'\n','result')
-        # out_text.insert(INSERT, result.warning_msg,'warning')
-        # out_text.tag_config('result', foreground=color)
-        # out_text.tag_config('warning', foreground='#facd50')
-        except Exception as e:
-            clear_contents()
-            out_text.insert(INSERT, "Error occured: " + str(e))
-            out_text["foreground"] = 'red'
-            traceback.print_exc()
-            pb.stop()
-            pb.grid_remove()
-            resume_ui()
-            root.update()
-    elif choice == '2':
-        try:
-            clear_contents()
-            out_text.insert(INSERT, 'Business Context Extraction Started ' + notice)
-            out_text["foreground"] = 'white'
-            root.update()
-            pb.grid(row=5, column=0, sticky=W, pady=2)
-            pb.start()
-            halt_ui()
-            root.update()
+        
+        elif choice == '2':
+            # Business context extraction
             t = WsidExtractionThreadedTask(result_queue, yaml_path, xlsx_path, is_enable_inline)
-            t.start()
-            root.after(100, process_queue)
-        # clear_contents()
-        # result=wsid.start(yaml_path,xlsx_path)
-        # color='green'
-        # if result.is_error:
-        # 	color='red'
-        # out_text.insert(INSERT, result.result_string+'\n','result')
-        # out_text.insert(INSERT, result.warning_msg,'warning')
-        # out_text.tag_config('result', foreground=color)
-        # out_text.tag_config('warning', foreground='#facd50')
-        except Exception as e:
-            clear_contents()
-            out_text.insert(INSERT, "Error occured: " + str(e))
-            out_text["foreground"] = 'red'
-            traceback.print_exc()
-            pb.stop()
-            pb.grid_remove()
-            resume_ui()
-            root.update()
-    elif choice == '3' or choice =='4':
-        try:
-            clear_contents()
-            out_text.insert(INSERT, 'Extracting error codes from WSID' + notice)
-            out_text["foreground"] = 'white'
-            root.update()
-            pb.grid(row=5, column=0, sticky=W, pady=2)
-            pb.start()
-            halt_ui()
-            root.update()
+        
+        elif choice in ['3', '4']:
+            # Error codes or PV extraction
             if choice == '3':
                 t = WsidErrorCodeExtractionThreadedTask(result_queue, xlsx_path)
             else:
                 t = WsidPossibleValuesExtractionThreadedTask(result_queue, xlsx_path)
-            t.start()
-            root.after(100, process_queue)
-        except Exception as e:
-            clear_contents()
-            out_text.insert(INSERT, "Error occured: " + str(e))
-            out_text["foreground"] = 'red'
-            traceback.print_exc()
-            pb.stop()
-            pb.grid_remove()
-            resume_ui()
-            root.update()
 
-    elif choice == '5':  # New option for creating PVL from Resource Details
-        try:
-            clear_contents()
-            out_text.insert(INSERT, 'Creating/Updating Possible Values List from Resource Details...' + notice)
-            out_text["foreground"] = 'white'
-            root.update()
-
-            # Progress bar handling
-            pb.grid(row=5, column=0, sticky=W, pady=2)
-            pb.start()
-            halt_ui()
-            root.update()
-
-            # Ask user for the WSID Excel file
+        elif choice == '5':
+            # Create/update PVL
             xlsx_path = askopenfilename(
                 title="Select WSID Excel File",
                 filetypes=[("Excel files", "*.xlsx *.xls")]
             )
             if not xlsx_path:
                 messagebox.showwarning("No file selected", "Please select a WSID Excel file to continue.")
-            else:
-                # Call the function we created
-                createPVL.generate_possible_values_list(xlsx_path)
+                return
+            createPVL.generate_possible_values_list(xlsx_path)
+            out_text.insert(INSERT, "\nPossible Values List tab successfully updated from Resource Details!\n")
+            out_text["foreground"] = 'green'
+            return  # no need to start a thread
 
-                out_text.insert(INSERT, "\nPossible Values List tab successfully updated from Resource Details!\n")
-                out_text["foreground"] = 'green'
+        # Start the thread if applicable
+        if choice != '5':
+            t.start()
+            root.after(100, process_queue)
 
-        except Exception as e:
-            clear_contents()
-            out_text.insert(INSERT, "Error occurred: " + str(e))
-            out_text["foreground"] = 'red'
-            traceback.print_exc()
-        finally:
-            pb.stop()
-            pb.grid_remove()
-            resume_ui()
-            root.update()
-
-
+    except Exception as e:
+        clear_contents()
+        out_text.insert(INSERT, f"Error occurred: {str(e)}")
+        out_text["foreground"] = 'red'
+        traceback.print_exc()
+    finally:
+        pb.stop()
+        pb.grid_remove()
+        resume_ui()
+        root.update()
 
 s = ttk.Style()
 s.configure('unchecked.TRadiobutton', background='black', foreground='white', font='aerial 12 bold')
