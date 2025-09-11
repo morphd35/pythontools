@@ -1,3 +1,4 @@
+
 import os
 import yaml
 import traceback
@@ -23,7 +24,6 @@ from Swagger2Csv import wsid_swag as wsid
 from Swagger2Csv import create_error_yaml as wsidToErr
 from Swagger2Csv import wsid_possible_values_yaml as wsidToPosibleValues
 from Swagger2Csv import create_possible_values_tab as createPVL
-
 
 
 
@@ -215,6 +215,7 @@ def switch():
         R2["style"] = "unchecked.TRadiobutton"
         R3["style"] = "unchecked.TRadiobutton"
         R4["style"] = "unchecked.TRadiobutton"
+        R5["style"] = "unchecked.TRadiobutton"
         clear_contents()
         enable_inline_btn.grid_remove()
         xlsx_path = ''
@@ -226,6 +227,7 @@ def switch():
         R2["style"] = "checked.TRadiobutton"
         R3["style"] = "unchecked.TRadiobutton"
         R4["style"] = "unchecked.TRadiobutton"
+        R5["style"] = "unchecked.TRadiobutton"
         tree.grid_remove()
         v_tree_scroll.grid_remove()
         x_tree_scroll.grid_remove()
@@ -238,6 +240,7 @@ def switch():
         R2["style"] = "unchecked.TRadiobutton"
         R3["style"] = "checked.TRadiobutton"
         R4["style"] = "unchecked.TRadiobutton"
+        R5["style"] = "unchecked.TRadiobutton"
         clear_contents()
         enable_inline_btn.grid_remove()
         tree.grid_remove()
@@ -250,10 +253,23 @@ def switch():
         R2["style"] = "unchecked.TRadiobutton"
         R3["style"] = "unchecked.TRadiobutton"
         R4["style"] = "checked.TRadiobutton"
+        R5["style"] = "unchecked.TRadiobutton"
         clear_contents()
         enable_inline_btn.grid_remove()
         tree.grid_remove()
         yaml_path = ''
+    elif str(var.get()) == '5':
+        change_state_yaml_btn_and_label('disable')
+        change_state_xls_btn_and_label('enable')
+        R1["style"] = "unchecked.TRadiobutton"
+        R2["style"] = "unchecked.TRadiobutton"
+        R3["style"] = "unchecked.TRadiobutton"
+        R4["style"] = "unchecked.TRadiobutton"
+        R5["style"] = "checked.TRadiobutton"
+        clear_contents()
+        enable_inline_btn.grid_remove()
+        tree.grid_remove()
+        yaml_path = ''    
 
     xls_label["text"] = 'Choose Input Xlsx File:'
     yml_label["text"] = 'Choose Input Yaml File:'
@@ -442,42 +458,42 @@ def start_process():
             root.update()
 
     elif choice == '5':  # New option for creating PVL from Resource Details
-    try:
-        clear_contents()
-        out_text.insert(INSERT, 'Creating/Updating Possible Values List from Resource Details...' + notice)
-        out_text["foreground"] = 'white'
-        root.update()
+        try:
+            clear_contents()
+            out_text.insert(INSERT, 'Creating/Updating Possible Values List from Resource Details...' + notice)
+            out_text["foreground"] = 'white'
+            root.update()
 
-        # Progress bar handling
-        pb.grid(row=5, column=0, sticky=W, pady=2)
-        pb.start()
-        halt_ui()
-        root.update()
+            # Progress bar handling
+            pb.grid(row=5, column=0, sticky=W, pady=2)
+            pb.start()
+            halt_ui()
+            root.update()
 
-        # Ask user for the WSID Excel file
-        xlsx_path = askopenfilename(
-            title="Select WSID Excel File",
-            filetypes=[("Excel files", "*.xlsx *.xls")]
-        )
-        if not xlsx_path:
-            messagebox.showwarning("No file selected", "Please select a WSID Excel file to continue.")
-        else:
-            # Call the function we created
-            createPVL.generate_possible_values_list(xlsx_path)
+            # Ask user for the WSID Excel file
+            xlsx_path = askopenfilename(
+                title="Select WSID Excel File",
+                filetypes=[("Excel files", "*.xlsx *.xls")]
+            )
+            if not xlsx_path:
+                messagebox.showwarning("No file selected", "Please select a WSID Excel file to continue.")
+            else:
+                # Call the function we created
+                createPVL.generate_possible_values_list(xlsx_path)
 
-            out_text.insert(INSERT, "\nPossible Values List tab successfully updated from Resource Details!\n")
-            out_text["foreground"] = 'green'
+                out_text.insert(INSERT, "\nPossible Values List tab successfully updated from Resource Details!\n")
+                out_text["foreground"] = 'green'
 
-    except Exception as e:
-        clear_contents()
-        out_text.insert(INSERT, "Error occurred: " + str(e))
-        out_text["foreground"] = 'red'
-        traceback.print_exc()
-    finally:
-        pb.stop()
-        pb.grid_remove()
-        resume_ui()
-        root.update()
+        except Exception as e:
+            clear_contents()
+            out_text.insert(INSERT, "Error occurred: " + str(e))
+            out_text["foreground"] = 'red'
+            traceback.print_exc()
+        finally:
+            pb.stop()
+            pb.grid_remove()
+            resume_ui()
+            root.update()
 
 
 
@@ -492,14 +508,7 @@ R1 = Radiobutton(root, text="SWAGGER to WSID", variable=var, value=1, style='unc
 R2 = Radiobutton(root, text="WSID to SWAGGER", variable=var, value=2, style='unchecked.TRadiobutton', command=switch)
 R3 = Radiobutton(root, text="WSID to ERROR CODE YAML", variable=var, value=3, style='unchecked.TRadiobutton',command=switch)
 R4 = Radiobutton(root, text="WSID to Possible Values YAML", variable=var, value=4, style='unchecked.TRadiobutton',command=switch)
-R5 = Radiobutton(
-    root,
-    text="Update PVL from Resource Details",
-    variable=var,
-    value=5,  # matches start_process() choice
-    style='unchecked.TRadiobutton',
-    command=switch
-)
+R5 = Radiobutton(root, text="Update PVL from Resource Details", variable=var, value=5, style='unchecked.TRadiobutton', command=switch)
 
 R1.grid(row=0, column=0, sticky=W, pady=3)
 R2.grid(row=1, column=0, sticky=W, pady=3)
@@ -530,9 +539,9 @@ x_tree_scroll.config(command=tree.xview)
 f1.grid(row=5, column=0, sticky=W, pady=2)
 start_btn = tk.Button(root, text='Start', command=lambda: start_process(), bg='#083740', fg='white',
                       font='arial 11 bold', height=2, width=8)
+start_btn.grid(row=6, column=0, sticky=W, pady=2)
 l3 = Label(root, text="", wraplength=300, background='black', foreground='white', font='aerial 12 bold')
-l3.grid(row=6, column=0, sticky=W, pady=2)
-start_btn.grid(row=7, column=0, sticky=W, pady=2)
+l3.grid(row=7, column=0, sticky=W, pady=2)
 width, height = 42, 20
 pb = ttk.Progressbar(
     root,
@@ -540,10 +549,12 @@ pb = ttk.Progressbar(
     mode='indeterminate',
     length=400
 )
+pb.grid(row=8, column=0, sticky=W, pady=2)
 out_text = scrolledtext.ScrolledText(width=width, height=height, wrap='word', background='black', foreground='white')
 out_text['font'] = ('arial', '12', 'bold')
-out_text.grid(row=8, column=0, sticky=W, pady=2)
+out_text.grid(row=9, column=0, sticky=W, pady=2)
 root.configure(background='black')
 root.eval('tk::PlaceWindow . center')
 root.title('Swagger2WSID')
 mainloop()
+
