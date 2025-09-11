@@ -9,6 +9,8 @@ from tkinter import messagebox
 from tkinter.filedialog import askopenfilename
 from ttkwidgets import CheckboxTreeview
 import yaml
+from types import SimpleNamespace
+
 
 # Domain workers (unchanged imports)
 from Swagger2Csv import swag_wsid as swag
@@ -327,56 +329,84 @@ class App:
     def _start_process(self) -> None:
         if not self._validate():
             return
-
+    
         choice = self.choice.get()
         self._clear_output()
         self._halt_ui()
-
+    
         try:
             if choice == "1":
-                selected_resources = {}
-                for res, id_map in self.checkbox_resource_mapping.items():
-                    ops = []
-                    for child_id, op_name in id_map.items():
-                        if child_id in self.tree.get_checked():
-                            ops.append(op_name)
-                    selected_resources[res] = ops
-
-                t = threading.Thread(target=self._run_and_queue,
-                                     args=(swag.start, (self.yaml_path, selected_resources)))
+                # collect checked ops
+                selected_resources = {
+                    res: [op_name for child_id, op_name in id_map.items()
+                          if child_id in self.tree.get_checked()]
+                    for res, id_map in self.checkbox_resource_mapping.items()
+                }
+                t = threading.Thread(
+                    target=self._run_and_queue,
+                    args=(swag.start, (self.yaml_path, selected_resources))
+                )
+    
             elif choice == "2":
-                t = threading.Thread(target=self._run_and_queue,
-                                     args=(wsid.start, (self.yaml_path, self.xlsx_path, self.is_enable_inline)))
+                t = threading.Thread(
+                    target=self._run_and_queue,
+                    args=(wsid.start, (self.yaml_path, self.xlsx_path, self.is_enable_inline))
+                )
+    
             elif choice == "3":
-                t = threading.Thread(target=self._run_and_queue,
-                                     args=(wsidToErr.start, (self.xlsx_path,)))
+                t = threading.Thread(
+                    target=self._run_and_queue,
+                    args=(wsidToErr.start, (self.xlsx_path,))
+                )
+    
             elif choice == "4":
-                t = threading.Thread(target=self._run_and_queue,
-                                     args=(wsidToPosibleValues.start, (self.xlsx_path,)))
-            else:  # "5"
-                # PVL generation runs inline (fast enough + user selects file here)
-                xlsx_path = self.xlsx_path or askopenfilename(title="Select WSID Excel File",
-                                                              filetypes=[("Excel files", "*.xlsx *.xls")])
+                t = threading.Thread(
+                    target=self._run_and_queue,
+                    args=(wsidToPosibleValues.start, (self.xlsx_path,))
+                )
+    
+            elif choice == "5":
+                xlsx_path = self.xlsx_path or askopenfilename(
+                    title="Select WSID Excel File",
+                    filetypes=[("Excel files", "*.xlsx *.xls")]
+                )
                 if not xlsx_path:
                     self._resume_ui()
                     return
-                createPVL.generate_possible_values_list(xlsx_path)
-                self._append_success("\nPossible Values List tab successfully updated from Resource Details!\n")
+    
+                # Let users know it's working
+                self.out_text.insert(tk.INSERT,
+                    "Generating Possible Values List… this can take a bit depending on file size.\n"
+                    "Please don’t close the app.\n"
+                )
+    
+                def _pvl_worker():
+                    createPVL.generate_possible_values_list(xlsx_path)
+                    return SimpleNamespace(
+                        result_string="\nPossible Values List tab successfully updated from Resource Details!\n",
+                        warning_msg="",
+                        is_error=False
+                    )
+    
+                t = threading.Thread(target=self._run_and_queue, args=(_pvl_worker, ()))
+    
+            else:
+                # Unknown selection safeguard
                 self._resume_ui()
                 return
-
-            # Threaded cases
+    
+            # Common: show spinner + start thread (for ALL choices 1–5)
             self.pb.grid()
             self.pb.start(10)
             t.daemon = True
             t.start()
             self.root.after(100, self._process_queue)
-
+    
         except Exception as e:
             self._append_error(f"Error occurred: {e}")
             traceback.print_exc()
             self._resume_ui()
-
+    
     def _run_and_queue(self, fn, args):
         try:
             result = fn(*args)
