@@ -57,58 +57,58 @@ class App:
         self._apply_option("1")
 
     # ---------- Styles ----------
-   def _build_styles(self) -> None:
-    s = ttk.Style(master=self.root)
-    # Use a theme that respects color settings
-    try:
-        s.theme_use('clam')
-    except Exception:
-        pass
-
-    # Global dark defaults for ttk
-    dark = {'background': 'black', 'foreground': 'white'}
-    for elem in ('TFrame','TLabel','TRadiobutton','TCheckbutton','TMenubutton','TNotebook','TSeparator'):
-        s.configure(elem, **dark)
-
-    # Buttons (ttk can be finicky about background); we mostly use tk.Button for color anyway
-    s.configure('TButton', foreground='white')
-    s.map('TButton',
-          foreground=[('active','white'), ('disabled','gray60')],
-          background=[('!active','black'), ('active','black')])
-
-    # Our radio styles
-    s.configure('unchecked.TRadiobutton', **dark, font=('Arial', 12, 'bold'))
-    s.configure('checked.TRadiobutton',   background='green', foreground='white', font=('Arial', 12, 'bold'))
-
-    # Treeview + selection colors
-    s.configure('Treeview',
-                background='black', fieldbackground='black', foreground='white', rowheight=22)
-    s.map('Treeview',
-          background=[('selected', '#164e63')],  # teal-ish selection
-          foreground=[('selected', 'white')])
-
-    # Make the CheckboxTreeview honor dark colors too
-    s.configure('Checkbox.Treeview', background='black', fieldbackground='black', foreground='white')
-
-    # Scrollbars (best effort; ttk scrollbar theming is limited)
-    s.configure('Vertical.TScrollbar', troughcolor='black', background='gray25')
-    s.configure('Horizontal.TScrollbar', troughcolor='black', background='gray25')
-
-    # Tk-level defaults (affect non-ttk widgets like tk.Button, Text, etc.)
-    self.root.configure(background='black')
-    self.root.option_add('*Background', 'black')
-    self.root.option_add('*Foreground', 'white')
-    self.root.option_add('*selectBackground', '#164e63')
-    self.root.option_add('*selectForeground', 'white')
-
-    # Keep radio buttons readable on hover/press/focus
-    # (unchecked stays black; checked stays a dark green)
-    for sty, base_bg in (('unchecked.TRadiobutton', 'black'),
-                         ('checked.TRadiobutton',  '#166534')):  # darker than 'green'
-        s.map(sty,
-              background=[('active', base_bg), ('pressed', base_bg), ('focus', base_bg)],
-              foreground=[('active', 'white'), ('!active', 'white')])
-   
+       def _build_styles(self) -> None:
+        s = ttk.Style(master=self.root)
+        # Use a theme that respects color settings
+        try:
+            s.theme_use('clam')
+        except Exception:
+            pass
+    
+        # Global dark defaults for ttk
+        dark = {'background': 'black', 'foreground': 'white'}
+        for elem in ('TFrame','TLabel','TRadiobutton','TCheckbutton','TMenubutton','TNotebook','TSeparator'):
+            s.configure(elem, **dark)
+    
+        # Buttons (ttk can be finicky about background); we mostly use tk.Button for color anyway
+        s.configure('TButton', foreground='white')
+        s.map('TButton',
+              foreground=[('active','white'), ('disabled','gray60')],
+              background=[('!active','black'), ('active','black')])
+    
+        # Our radio styles
+        s.configure('unchecked.TRadiobutton', **dark, font=('Arial', 12, 'bold'))
+        s.configure('checked.TRadiobutton',   background='green', foreground='white', font=('Arial', 12, 'bold'))
+    
+        # Treeview + selection colors
+        s.configure('Treeview',
+                    background='black', fieldbackground='black', foreground='white', rowheight=22)
+        s.map('Treeview',
+              background=[('selected', '#164e63')],  # teal-ish selection
+              foreground=[('selected', 'white')])
+    
+        # Make the CheckboxTreeview honor dark colors too
+        s.configure('Checkbox.Treeview', background='black', fieldbackground='black', foreground='white')
+    
+        # Scrollbars (best effort; ttk scrollbar theming is limited)
+        s.configure('Vertical.TScrollbar', troughcolor='black', background='gray25')
+        s.configure('Horizontal.TScrollbar', troughcolor='black', background='gray25')
+    
+        # Tk-level defaults (affect non-ttk widgets like tk.Button, Text, etc.)
+        self.root.configure(background='black')
+        self.root.option_add('*Background', 'black')
+        self.root.option_add('*Foreground', 'white')
+        self.root.option_add('*selectBackground', '#164e63')
+        self.root.option_add('*selectForeground', 'white')
+    
+        # Keep radio buttons readable on hover/press/focus
+        # (unchecked stays black; checked stays a dark green)
+        for sty, base_bg in (('unchecked.TRadiobutton', 'black'),
+                             ('checked.TRadiobutton',  '#166534')):  # darker than 'green'
+            s.map(sty,
+                  background=[('active', base_bg), ('pressed', base_bg), ('focus', base_bg)],
+                  foreground=[('active', 'white'), ('!active', 'white')])
+       
 
 
     # ---------- Top choices (R1..R5) ----------
