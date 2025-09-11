@@ -439,6 +439,45 @@ def start_process():
             resume_ui()
             root.update()
 
+    elif choice == '5':  # New option for creating PVL from Resource Details
+    try:
+        clear_contents()
+        out_text.insert(INSERT, 'Creating/Updating Possible Values List from Resource Details...' + notice)
+        out_text["foreground"] = 'white'
+        root.update()
+
+        # Progress bar handling
+        pb.grid(row=5, column=0, sticky=W, pady=2)
+        pb.start()
+        halt_ui()
+        root.update()
+
+        # Ask user for the WSID Excel file
+        xlsx_path = askopenfilename(
+            title="Select WSID Excel File",
+            filetypes=[("Excel files", "*.xlsx *.xls")]
+        )
+        if not xlsx_path:
+            messagebox.showwarning("No file selected", "Please select a WSID Excel file to continue.")
+        else:
+            # Call the function we created
+            createPVL.generate_possible_values_list(xlsx_path)
+
+            out_text.insert(INSERT, "\nPossible Values List tab successfully updated from Resource Details!\n")
+            out_text["foreground"] = 'green'
+
+    except Exception as e:
+        clear_contents()
+        out_text.insert(INSERT, "Error occurred: " + str(e))
+        out_text["foreground"] = 'red'
+        traceback.print_exc()
+    finally:
+        pb.stop()
+        pb.grid_remove()
+        resume_ui()
+        root.update()
+
+
 
 s = ttk.Style()
 s.configure('unchecked.TRadiobutton', background='black', foreground='white', font='aerial 12 bold')
@@ -451,10 +490,20 @@ R1 = Radiobutton(root, text="SWAGGER to WSID", variable=var, value=1, style='unc
 R2 = Radiobutton(root, text="WSID to SWAGGER", variable=var, value=2, style='unchecked.TRadiobutton', command=switch)
 R3 = Radiobutton(root, text="WSID to ERROR CODE YAML", variable=var, value=3, style='unchecked.TRadiobutton',command=switch)
 R4 = Radiobutton(root, text="WSID to Possible Values YAML", variable=var, value=4, style='unchecked.TRadiobutton',command=switch)
+R5 = Radiobutton(
+    root,
+    text="Update PVL from Resource Details",
+    variable=var,
+    value=5,  # matches start_process() choice
+    style='unchecked.TRadiobutton',
+    command=switch
+)
+
 R1.grid(row=0, column=0, sticky=W, pady=3)
 R2.grid(row=1, column=0, sticky=W, pady=3)
 R3.grid(row=2, column=0, sticky=W, pady=3)
 R4.grid(row=3, column=0, sticky=W, pady=3)
+R5.grid(row=4, column=0, sticky=W, pady=3)
 
 f1 = tk.Frame(root, background='black')
 yml_label = Label(f1, text="Choose Input Yaml File :", wraplength=300, background='black', foreground='white',
@@ -476,12 +525,12 @@ enable_inline_btn = tk.Button(f1, text="Inline Defs Enabled", width=20, command=
 tree = CheckboxTreeview(f1, show='tree', height=5, yscrollcommand=v_tree_scroll.set, xscrollcommand=x_tree_scroll.set)
 v_tree_scroll.config(command=tree.yview)
 x_tree_scroll.config(command=tree.xview)
-f1.grid(row=4, column=0, sticky=W, pady=2)
+f1.grid(row=5, column=0, sticky=W, pady=2)
 start_btn = tk.Button(root, text='Start', command=lambda: start_process(), bg='#083740', fg='white',
                       font='arial 11 bold', height=2, width=8)
 l3 = Label(root, text="", wraplength=300, background='black', foreground='white', font='aerial 12 bold')
-l3.grid(row=3, column=0, sticky=W, pady=2)
-start_btn.grid(row=5, column=0, sticky=W, pady=2)
+l3.grid(row=4, column=0, sticky=W, pady=2)
+start_btn.grid(row=7, column=0, sticky=W, pady=2)
 width, height = 42, 20
 pb = ttk.Progressbar(
     root,
@@ -491,7 +540,7 @@ pb = ttk.Progressbar(
 )
 out_text = scrolledtext.ScrolledText(width=width, height=height, wrap='word', background='black', foreground='white')
 out_text['font'] = ('arial', '12', 'bold')
-out_text.grid(row=6, column=0, sticky=W, pady=2)
+out_text.grid(row=8, column=0, sticky=W, pady=2)
 root.configure(background='black')
 root.eval('tk::PlaceWindow . center')
 root.title('Swagger2WSID')
