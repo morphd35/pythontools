@@ -22,6 +22,8 @@ from Swagger2Csv import wsid_swag as wsid
 # from Swagger2Csv import wsid_err_yaml as wsidToErr
 from Swagger2Csv import create_error_yaml as wsidToErr
 from Swagger2Csv import wsid_possible_values_yaml as wsidToPosibleValues
+from Swagger2Csv import create_possible_values_tab as createPVL
+
 
 
 
