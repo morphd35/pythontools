@@ -115,10 +115,13 @@ class App:
 
         self.v_tree_scroll = ttk.Scrollbar(self.tree_frame, orient=tk.VERTICAL)
         self.x_tree_scroll = ttk.Scrollbar(self.tree_frame, orient=tk.HORIZONTAL)
-        self.tree = CheckboxTreeview(self.tree_frame, show='tree', height=8,
-                                     yscrollcommand=self.v_tree_scroll.set,
-                                     xscrollcommand=self.x_tree_scroll.set,
-                                     style="Checkbox.Treeview")
+        self.tree = CheckboxTreeview(
+        self.tree_frame,
+        show='tree',
+        height=8,
+        yscrollcommand=self.v_tree_scroll.set,
+        xscrollcommand=self.x_tree_scroll.set
+        )
 
         self.v_tree_scroll.config(command=self.tree.yview)
         self.x_tree_scroll.config(command=self.tree.xview)
