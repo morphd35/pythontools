@@ -55,12 +55,50 @@ class App:
         self._apply_option("1")
 
     # ---------- Styles ----------
-    def _build_styles(self) -> None:
-        s = ttk.Style(master=self.root)
-        s.configure('unchecked.TRadiobutton', background='black', foreground='white', font=('Arial', 12, 'bold'))
-        s.configure('checked.TRadiobutton',   background='green', foreground='white', font=('Arial', 12, 'bold'))
-        s.configure("Checkbox.Treeview", background="black",
-                    fieldbackground="black", foreground="white", font=('Arial', 9, 'bold'), rowheight=22)
+   def _build_styles(self) -> None:
+    s = ttk.Style(master=self.root)
+    # Use a theme that respects color settings
+    try:
+        s.theme_use('clam')
+    except Exception:
+        pass
+
+    # Global dark defaults for ttk
+    dark = {'background': 'black', 'foreground': 'white'}
+    for elem in ('TFrame','TLabel','TRadiobutton','TCheckbutton','TMenubutton','TNotebook','TSeparator'):
+        s.configure(elem, **dark)
+
+    # Buttons (ttk can be finicky about background); we mostly use tk.Button for color anyway
+    s.configure('TButton', foreground='white')
+    s.map('TButton',
+          foreground=[('active','white'), ('disabled','gray60')],
+          background=[('!active','black'), ('active','black')])
+
+    # Our radio styles
+    s.configure('unchecked.TRadiobutton', **dark, font=('Arial', 12, 'bold'))
+    s.configure('checked.TRadiobutton',   background='green', foreground='white', font=('Arial', 12, 'bold'))
+
+    # Treeview + selection colors
+    s.configure('Treeview',
+                background='black', fieldbackground='black', foreground='white', rowheight=22)
+    s.map('Treeview',
+          background=[('selected', '#164e63')],  # teal-ish selection
+          foreground=[('selected', 'white')])
+
+    # Make the CheckboxTreeview honor dark colors too
+    s.configure('Checkbox.Treeview', background='black', fieldbackground='black', foreground='white')
+
+    # Scrollbars (best effort; ttk scrollbar theming is limited)
+    s.configure('Vertical.TScrollbar', troughcolor='black', background='gray25')
+    s.configure('Horizontal.TScrollbar', troughcolor='black', background='gray25')
+
+    # Tk-level defaults (affect non-ttk widgets like tk.Button, Text, etc.)
+    self.root.configure(background='black')
+    self.root.option_add('*Background', 'black')
+    self.root.option_add('*Foreground', 'white')
+    self.root.option_add('*selectBackground', '#164e63')
+    self.root.option_add('*selectForeground', 'white')
+
 
     # ---------- Top choices (R1..R5) ----------
     def _build_header(self) -> None:
@@ -86,17 +124,17 @@ class App:
 
     # ---------- File pickers + inline toggle ----------
     def _build_inputs(self) -> None:
-        self.inputs = ttk.Frame(self.root)
+        self.inputs = ttk.Frame(self.root, style='TFrame')
         self.inputs.grid(row=1, column=0, sticky="we", padx=8)
         self.inputs.columnconfigure(1, weight=1)
 
-        self.yml_label = ttk.Label(self.inputs, text="Choose Input Yaml File :", background='black', foreground='white', font=('Arial', 12, 'bold'))
+        self.yml_label = ttk.Label(self.inputs, text="Choose Input Yaml File :", font=('Arial', 12, 'bold'))
         self.yml_label.grid(row=0, column=0, sticky="w", pady=4)
         self.yml_btn = tk.Button(self.inputs, text='Disabled', state=tk.DISABLED, command=self._open_yaml_file, bg='#424040', fg='white',
                                  font='Arial 9 bold', height=1, width=10)
         self.yml_btn.grid(row=0, column=1, sticky="w", pady=4)
 
-        self.xls_label = ttk.Label(self.inputs, text="Choose Input Xlsx File:", background='black', foreground='white', font=('Arial', 12, 'bold'))
+        self.xls_label = ttk.Label(self.inputs, text="Choose Input Xlsx File:", font=('Arial', 12, 'bold'))
         self.xls_label.grid(row=1, column=0, sticky="w", pady=4)
         self.xls_btn = tk.Button(self.inputs, text='Disabled', state=tk.DISABLED, command=self._open_excel_file, bg='#424040', fg='white',
                                  font='Arial 9 bold', height=1, width=10)
@@ -108,7 +146,7 @@ class App:
 
     # ---------- Resource tree ----------
     def _build_tree(self) -> None:
-        self.tree_frame = ttk.Frame(self.root)
+        self.tree_frame = ttk.Frame(self.root, style='TFrame')
         self.tree_frame.grid(row=2, column=0, sticky="news", padx=8, pady=(6, 0))
         self.root.rowconfigure(2, weight=1)
         self.root.columnconfigure(0, weight=1)
@@ -134,7 +172,7 @@ class App:
 
     # ---------- Start / Progress ----------
     def _build_actions(self) -> None:
-        self.actions = ttk.Frame(self.root)
+        self.actions = ttk.Frame(self.root, style='TFrame')
         self.actions.grid(row=3, column=0, sticky="w", padx=8, pady=6)
 
         self.start_btn = tk.Button(self.actions, text='Start', command=self._start_process, bg='#083740', fg='white',
