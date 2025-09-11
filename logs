@@ -1,0 +1,10 @@
+Traceback (most recent call last):
+  File "C:\Users\A423347\OneDrive - Fidelity Technology Group, LLC\Documents\Swagger_WSID_Converter feb2024\main_new.py", line 402, in <module>
+    App().run()
+  File "C:\Users\A423347\OneDrive - Fidelity Technology Group, LLC\Documents\Swagger_WSID_Converter feb2024\main_new.py", line 50, in __init__
+    self._build_tree()
+  File "C:\Users\A423347\OneDrive - Fidelity Technology Group, LLC\Documents\Swagger_WSID_Converter feb2024\main_new.py", line 118, in _build_tree
+    self.tree = CheckboxTreeview(self.tree_frame, show='tree', height=8,
+  File "C:\Program Files\Python\lib\site-packages\ttkwidgets\checkboxtreeview.py", line 38, in __init__
+    ttk.Treeview.__init__(self, master, style='Checkbox.Treeview', **kw)
+TypeError: tkinter.ttk.Treeview.__init__() got multiple values for keyword argument 'style'
