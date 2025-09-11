@@ -531,7 +531,7 @@ f1.grid(row=5, column=0, sticky=W, pady=2)
 start_btn = tk.Button(root, text='Start', command=lambda: start_process(), bg='#083740', fg='white',
                       font='arial 11 bold', height=2, width=8)
 l3 = Label(root, text="", wraplength=300, background='black', foreground='white', font='aerial 12 bold')
-l3.grid(row=4, column=0, sticky=W, pady=2)
+l3.grid(row=6, column=0, sticky=W, pady=2)
 start_btn.grid(row=7, column=0, sticky=W, pady=2)
 width, height = 42, 20
 pb = ttk.Progressbar(
